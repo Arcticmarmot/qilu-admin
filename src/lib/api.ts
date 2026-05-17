@@ -12,8 +12,8 @@ type MaybePageResult<T> = PageResult<T> | T[];
 export type LoginResponse = {
   token: string;
   uuid: string;
-  nickname: string;
-  email: string;
+  username: string;
+  role: string;
 };
 
 export type CurrentUser = {
@@ -90,8 +90,8 @@ function normalizePageResult<T>(value: MaybePageResult<T>, size: number) {
   } satisfies PageResult<T>;
 }
 
-export function login(input: { email: string; password: string }) {
-  return request<LoginResponse>("/auth/login", {
+export function login(input: { username: string; password: string }) {
+  return request<LoginResponse>("/admin/auth/login", {
     method: "POST",
     body: input,
     auth: false,
