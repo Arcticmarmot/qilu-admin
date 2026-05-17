@@ -8,13 +8,21 @@ import { AUTH_INVALID_EVENT, clearToken, getToken } from "@/lib/auth";
 import type { AuthInvalidDetail } from "@/lib/auth";
 import { getCurrentUser, type CurrentUser } from "@/lib/api";
 import { cx } from "@/lib/cx";
+import { PixelAvatar } from "@/components/pixel-avatar";
 
 type NavLink = {
   href: string;
   label: string;
 };
 
-type NavIconName = "overview" | "users" | "posts" | "seckill";
+type NavIconName =
+  | "overview"
+  | "users"
+  | "posts"
+  | "comments"
+  | "replies"
+  | "likes"
+  | "seckill";
 
 type NavItem =
   | (NavLink & {
@@ -30,6 +38,9 @@ const navItems: NavItem[] = [
   { href: "/overview", icon: "overview", label: "系统概览" },
   { href: "/users", icon: "users", label: "用户管理" },
   { href: "/posts", icon: "posts", label: "帖子管理" },
+  { href: "/comments", icon: "comments", label: "评论管理" },
+  { href: "/replies", icon: "replies", label: "回复管理" },
+  { href: "/likes", icon: "likes", label: "点赞管理" },
   {
     icon: "seckill",
     label: "秒杀管理",
@@ -72,6 +83,10 @@ function isActiveGroup(
 }
 
 function getBreadcrumb(pathname: string) {
+  if (pathname === "/profile") {
+    return ["基本信息"];
+  }
+
   for (const item of navItems) {
     if ("href" in item && isActiveHref(pathname, item.href)) {
       return [item.label];
@@ -139,6 +154,80 @@ function NavIcon({ name }: { name: NavIconName }) {
       >
         <path
           d="M6.5 4.5h11A1.5 1.5 0 0 1 19 6v12a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 18V6a1.5 1.5 0 0 1 1.5-1.5ZM8.5 8.5h7M8.5 12h7M8.5 15.5h4.5"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "comments") {
+    return (
+      <svg
+        aria-hidden="true"
+        className="h-5 w-5 shrink-0"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M5 6.8A2.8 2.8 0 0 1 7.8 4h8.4A2.8 2.8 0 0 1 19 6.8v5.4a2.8 2.8 0 0 1-2.8 2.8h-4.7l-4 4v-4A2.8 2.8 0 0 1 5 12.2V6.8Z"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M8.5 8.5h7M8.5 11.5h4.5"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.8"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "replies") {
+    return (
+      <svg
+        aria-hidden="true"
+        className="h-5 w-5 shrink-0"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M5 6.8A2.8 2.8 0 0 1 7.8 4h6.4A2.8 2.8 0 0 1 17 6.8v3.4a2.8 2.8 0 0 1-2.8 2.8H10l-3.2 3.2V13A2.8 2.8 0 0 1 5 10.2V6.8Z"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M12 15h2.5l2.7 2.7V15a2.6 2.6 0 0 0 1.8-2.5V10"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M8.2 8h5.2M8.2 10.5h3"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.8"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "likes") {
+    return (
+      <svg
+        aria-hidden="true"
+        className="h-5 w-5 shrink-0"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <path
+          d="M7.2 10.5v8M4.8 10.5h2.4v8H4.8A1.8 1.8 0 0 1 3 16.7v-4.4a1.8 1.8 0 0 1 1.8-1.8ZM7.2 10.5l3.2-5.6a1.7 1.7 0 0 1 2.7-.3c.4.4.6 1 .5 1.6l-.5 3.1h4.5a2.4 2.4 0 0 1 2.3 3l-1.2 4.6a2.4 2.4 0 0 1-2.3 1.8H7.2"
           stroke="currentColor"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -223,6 +312,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   });
 
   const breadcrumb = useMemo(() => getBreadcrumb(pathname), [pathname]);
+  const displayName =
+    currentUser?.nickname ?? currentUser?.username ?? currentUser?.uuid ?? "管理员";
+  const displayMeta = currentUser?.email ?? currentUser?.role ?? "已登录";
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -313,7 +405,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           />
           <div className="ml-3">
             <div className="text-sm font-semibold">Qilu Admin</div>
-            <div className="text-xs text-slate-400">歧路后台</div>
+            <div className="text-xs text-slate-400">歧路后台管理系统</div>
           </div>
         </div>
         <nav className="flex-1 space-y-1.5 px-3 py-4">
@@ -387,7 +479,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="border-t border-white/10 p-4 text-xs leading-5 text-slate-400">
-          Qilu minimal admin
+          Copyrights @Arcticmarmot 2026
         </div>
       </aside>
 
@@ -419,16 +511,22 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               })}
             </nav>
             <div className="flex items-center gap-3">
-              <div className="hidden text-right sm:block">
-                <div className="text-sm font-medium text-slate-900">
-                  {currentUser?.nickname ?? currentUser?.username ?? "管理员"}
+              <Link
+                className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 transition hover:bg-slate-100"
+                href="/profile"
+              >
+                <PixelAvatar className="h-9 w-9" name={displayName} />
+                <div className="hidden min-w-0 text-right sm:block">
+                  <div className="truncate text-sm font-medium text-slate-900">
+                    {displayName}
+                  </div>
+                  <div className="truncate text-xs text-slate-500">
+                    {displayMeta}
+                  </div>
                 </div>
-                <div className="text-xs text-slate-500">
-                  {currentUser?.email ?? currentUser?.role ?? "已登录"}
-                </div>
-              </div>
+              </Link>
               <button
-                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                className="h-9 rounded-md border border-red-200 bg-red-50 px-3 text-sm font-medium text-red-700 transition hover:border-red-300 hover:bg-red-100"
                 type="button"
                 onClick={handleLogout}
               >

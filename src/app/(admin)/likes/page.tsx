@@ -4,67 +4,64 @@ import { FormEvent, useEffect, useState } from "react";
 import { Pagination } from "@/components/pagination";
 import { StatusBadge } from "@/components/status-badge";
 import { TableEmpty, TableError, TableLoading } from "@/components/table-state";
-import {
-  banAdminUser,
-  getAdminUserPage,
-  type AdminUserPageItem,
-  type PageResult,
-  unbanAdminUser,
-} from "@/lib/api";
+import { getLikePage, type AdminLike, type PageResult } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error";
 import { formatDateTime } from "@/lib/format";
 
 const PAGE_SIZE = 20;
 
-type UserFilters = {
-  uuid: string;
-  nickname: string;
-  email: string;
+type LikeFilters = {
+  likeId: string;
+  creationType: string;
+  creationId: string;
+  userUuid: string;
   status: string;
 };
 
-const emptyFilters: UserFilters = {
-  uuid: "",
-  nickname: "",
-  email: "",
+const emptyFilters: LikeFilters = {
+  likeId: "",
+  creationType: "",
+  creationId: "",
+  userUuid: "",
   status: "",
 };
 
-function getUserStatus(status?: number) {
+function getLikeStatus(status?: number) {
   if (status === 1) {
-    return { label: "正常", tone: "green" as const };
+    return { label: "已点赞", tone: "green" as const };
   }
 
   if (status === 0) {
-    return { label: "已封禁", tone: "red" as const };
+    return { label: "已取消", tone: "slate" as const };
   }
 
   return { label: "未知", tone: "slate" as const };
 }
 
-function getActionButtonClasses(active: boolean, tone: "red" | "green") {
-  if (!active) {
-    return "h-8 rounded-md border border-slate-200 bg-slate-100 px-3 text-xs font-medium text-slate-400";
+function getCreationType(type?: string) {
+  if (type === "POST") {
+    return { label: "帖子", tone: "teal" as const };
   }
 
-  if (tone === "red") {
-    return "h-8 rounded-md border border-red-200 bg-red-50 px-3 text-xs font-medium text-red-700 transition hover:border-red-300 hover:bg-red-100";
+  if (type === "COMMENT") {
+    return { label: "评论", tone: "amber" as const };
   }
 
-  return "h-8 rounded-md border border-green-200 bg-green-50 px-3 text-xs font-medium text-green-700 transition hover:border-green-300 hover:bg-green-100";
+  if (type === "REPLY") {
+    return { label: "回复", tone: "green" as const };
+  }
+
+  return { label: type || "未知", tone: "slate" as const };
 }
 
-export default function UsersPage() {
-  const [draftFilters, setDraftFilters] = useState<UserFilters>(emptyFilters);
-  const [filters, setFilters] = useState<UserFilters>(emptyFilters);
+export default function LikesPage() {
+  const [draftFilters, setDraftFilters] = useState<LikeFilters>(emptyFilters);
+  const [filters, setFilters] = useState<LikeFilters>(emptyFilters);
   const [page, setPage] = useState(1);
   const [queryVersion, setQueryVersion] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [actionMessage, setActionMessage] = useState("");
-  const [actionError, setActionError] = useState("");
-  const [actionUserUuid, setActionUserUuid] = useState("");
-  const [data, setData] = useState<PageResult<AdminUserPageItem>>({
+  const [data, setData] = useState<PageResult<AdminLike>>({
     current: 1,
     size: PAGE_SIZE,
     total: 0,
@@ -82,12 +79,13 @@ export default function UsersPage() {
       setLoading(true);
       setError("");
 
-      getAdminUserPage({
+      getLikePage({
         current: page,
         size: PAGE_SIZE,
-        uuid: filters.uuid,
-        nickname: filters.nickname,
-        email: filters.email,
+        likeId: filters.likeId,
+        creationType: filters.creationType,
+        creationId: filters.creationId,
+        userUuid: filters.userUuid,
         status: filters.status,
       })
         .then((result) => {
@@ -97,7 +95,7 @@ export default function UsersPage() {
         })
         .catch((requestError) => {
           if (!ignore) {
-            setError(getErrorMessage(requestError, "用户列表加载失败"));
+            setError(getErrorMessage(requestError, "点赞列表加载失败"));
             setData({
               current: page,
               size: PAGE_SIZE,
@@ -121,13 +119,12 @@ export default function UsersPage() {
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setActionMessage("");
-    setActionError("");
     setPage(1);
     setFilters({
-      uuid: draftFilters.uuid.trim(),
-      nickname: draftFilters.nickname.trim(),
-      email: draftFilters.email.trim(),
+      likeId: draftFilters.likeId.trim(),
+      creationType: draftFilters.creationType,
+      creationId: draftFilters.creationId.trim(),
+      userUuid: draftFilters.userUuid.trim(),
       status: draftFilters.status,
     });
     setQueryVersion((current) => current + 1);
@@ -137,52 +134,70 @@ export default function UsersPage() {
     setDraftFilters(emptyFilters);
     setFilters(emptyFilters);
     setPage(1);
-    setActionMessage("");
-    setActionError("");
     setQueryVersion((current) => current + 1);
-  }
-
-  async function handleUserStatusAction(
-    user: AdminUserPageItem,
-    action: "ban" | "unban",
-  ) {
-    setActionMessage("");
-    setActionError("");
-    setActionUserUuid(user.uuid);
-
-    try {
-      if (action === "ban") {
-        await banAdminUser(user.uuid);
-        setActionMessage(`已封禁用户：${user.nickname || user.uuid}`);
-      } else {
-        await unbanAdminUser(user.uuid);
-        setActionMessage(`已解封用户：${user.nickname || user.uuid}`);
-      }
-
-      setQueryVersion((current) => current + 1);
-    } catch (requestError) {
-      setActionError(
-        getErrorMessage(
-          requestError,
-          action === "ban" ? "封禁用户失败" : "解封用户失败",
-        ),
-      );
-    } finally {
-      setActionUserUuid("");
-    }
   }
 
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-2xl font-semibold text-slate-950">用户管理</h2>
+        <h2 className="text-2xl font-semibold text-slate-950">点赞管理</h2>
       </div>
 
       <form
         className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
         onSubmit={handleSearch}
       >
-        <div className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1.2fr_0.85fr_auto]">
+        <div className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[0.75fr_0.85fr_0.75fr_1.25fr_0.8fr_auto]">
+          <label className="flex flex-col gap-2">
+            <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
+              点赞 ID
+            </span>
+            <input
+              className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
+              value={draftFilters.likeId}
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  likeId: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
+              创作类型
+            </span>
+            <select
+              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
+              value={draftFilters.creationType}
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  creationType: event.target.value,
+                }))
+              }
+            >
+              <option value="">全部</option>
+              <option value="POST">帖子</option>
+              <option value="COMMENT">评论</option>
+              <option value="REPLY">回复</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
+              创作 ID
+            </span>
+            <input
+              className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
+              value={draftFilters.creationId}
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  creationId: event.target.value,
+                }))
+              }
+            />
+          </label>
           <label className="flex flex-col gap-2">
             <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
               用户 UUID
@@ -190,50 +205,18 @@ export default function UsersPage() {
             <input
               className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
               placeholder="5ee308..."
-              value={draftFilters.uuid}
+              value={draftFilters.userUuid}
               onChange={(event) =>
                 setDraftFilters((current) => ({
                   ...current,
-                  uuid: event.target.value,
+                  userUuid: event.target.value,
                 }))
               }
             />
           </label>
           <label className="flex flex-col gap-2">
             <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
-              昵称
-            </span>
-            <input
-              className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
-              placeholder="marmot"
-              value={draftFilters.nickname}
-              onChange={(event) =>
-                setDraftFilters((current) => ({
-                  ...current,
-                  nickname: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label className="flex flex-col gap-2">
-            <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
-              邮箱
-            </span>
-            <input
-              className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
-              placeholder="marmot@example.com"
-              value={draftFilters.email}
-              onChange={(event) =>
-                setDraftFilters((current) => ({
-                  ...current,
-                  email: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label className="flex flex-col gap-2">
-            <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
-              账号状态
+              状态
             </span>
             <select
               className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
@@ -246,8 +229,8 @@ export default function UsersPage() {
               }
             >
               <option value="">全部</option>
-              <option value="1">正常</option>
-              <option value="0">封禁</option>
+              <option value="1">已点赞</option>
+              <option value="0">已取消</option>
             </select>
           </label>
           <div className="flex gap-2">
@@ -270,93 +253,61 @@ export default function UsersPage() {
         </div>
       </form>
 
-      {actionMessage ? (
-        <div className="rounded-md border border-green-200 bg-green-50 px-3.5 py-3 text-sm text-green-700">
-          {actionMessage}
-        </div>
-      ) : null}
-      {actionError ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
-          {actionError}
-        </div>
-      ) : null}
-
       <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
               <tr>
-                <th className="px-6 py-3">用户</th>
-                <th className="px-6 py-3">邮箱</th>
-                <th className="px-6 py-3">状态</th>
-                <th className="px-6 py-3">注册时间</th>
+                <th className="whitespace-nowrap px-6 py-3">ID</th>
+                <th className="whitespace-nowrap px-6 py-3">创作类型</th>
+                <th className="whitespace-nowrap px-6 py-3">创作 ID</th>
+                <th className="w-56 px-6 py-3">用户 UUID</th>
+                <th className="whitespace-nowrap px-6 py-3">状态</th>
+                <th className="px-6 py-3">创建时间</th>
                 <th className="px-6 py-3">更新时间</th>
-                <th className="px-6 py-3 text-right">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {loading ? <TableLoading colSpan={6} /> : null}
+              {loading ? <TableLoading colSpan={7} /> : null}
               {!loading && error ? (
-                <TableError colSpan={6} message={error} />
+                <TableError colSpan={7} message={error} />
               ) : null}
               {!loading && !error && data.records.length === 0 ? (
-                <TableEmpty colSpan={6} />
+                <TableEmpty colSpan={7} />
               ) : null}
               {!loading && !error
-                ? data.records.map((user) => {
-                    const statusInfo = getUserStatus(user.status);
-                    const canBan = user.status === 1;
-                    const canUnban = user.status === 0;
-                    const actionLoading = actionUserUuid === user.uuid;
+                ? data.records.map((like) => {
+                    const typeInfo = getCreationType(like.creationType);
+                    const statusInfo = getLikeStatus(like.status);
 
                     return (
-                      <tr className="hover:bg-slate-50" key={user.uuid}>
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-slate-950">
-                            {user.nickname || "-"}
-                          </div>
-                          <div className="mt-1 max-w-72 truncate text-xs text-slate-500">
-                            {user.uuid}
+                      <tr className="hover:bg-slate-50" key={like.id}>
+                        <td className="whitespace-nowrap px-6 py-4 text-xs font-medium text-slate-500">
+                          ID {like.id}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <StatusBadge tone={typeInfo.tone}>
+                            {typeInfo.label}
+                          </StatusBadge>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-slate-600">
+                          {like.creationId ?? "-"}
+                        </td>
+                        <td className="w-56 px-6 py-4 text-slate-600">
+                          <div className="max-w-52 truncate">
+                            {like.userUuid || "-"}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-600">
-                          {user.email || "-"}
-                        </td>
-                        <td className="px-6 py-4">
+                        <td className="whitespace-nowrap px-6 py-4">
                           <StatusBadge tone={statusInfo.tone}>
                             {statusInfo.label}
                           </StatusBadge>
                         </td>
                         <td className="px-6 py-4 text-slate-600">
-                          {formatDateTime(user.createdAt)}
+                          {formatDateTime(like.createdAt)}
                         </td>
                         <td className="px-6 py-4 text-slate-600">
-                          {formatDateTime(user.updatedAt)}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              className={getActionButtonClasses(canBan, "red")}
-                              disabled={!canBan || actionLoading}
-                              type="button"
-                              onClick={() => handleUserStatusAction(user, "ban")}
-                            >
-                              封禁
-                            </button>
-                            <button
-                              className={getActionButtonClasses(
-                                canUnban,
-                                "green",
-                              )}
-                              disabled={!canUnban || actionLoading}
-                              type="button"
-                              onClick={() =>
-                                handleUserStatusAction(user, "unban")
-                              }
-                            >
-                              解封
-                            </button>
-                          </div>
+                          {formatDateTime(like.updatedAt)}
                         </td>
                       </tr>
                     );

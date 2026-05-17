@@ -5,38 +5,44 @@ import { Pagination } from "@/components/pagination";
 import { StatusBadge } from "@/components/status-badge";
 import { TableEmpty, TableError, TableLoading } from "@/components/table-state";
 import {
-  banAdminUser,
-  getAdminUserPage,
-  type AdminUserPageItem,
+  banAdminComment,
+  getCommentPage,
+  type AdminComment,
   type PageResult,
-  unbanAdminUser,
+  unbanAdminComment,
 } from "@/lib/api";
 import { getErrorMessage } from "@/lib/error";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatNumber } from "@/lib/format";
 
 const PAGE_SIZE = 20;
 
-type UserFilters = {
-  uuid: string;
-  nickname: string;
-  email: string;
+type CommentFilters = {
+  id: string;
+  postId: string;
+  userUuid: string;
+  content: string;
   status: string;
 };
 
-const emptyFilters: UserFilters = {
-  uuid: "",
-  nickname: "",
-  email: "",
+const emptyFilters: CommentFilters = {
+  id: "",
+  postId: "",
+  userUuid: "",
+  content: "",
   status: "",
 };
 
-function getUserStatus(status?: number) {
+function getCommentStatus(status?: number) {
   if (status === 1) {
     return { label: "正常", tone: "green" as const };
   }
 
-  if (status === 0) {
+  if (status === 2) {
     return { label: "已封禁", tone: "red" as const };
+  }
+
+  if (status === 0) {
+    return { label: "已删除", tone: "slate" as const };
   }
 
   return { label: "未知", tone: "slate" as const };
@@ -54,17 +60,26 @@ function getActionButtonClasses(active: boolean, tone: "red" | "green") {
   return "h-8 rounded-md border border-green-200 bg-green-50 px-3 text-xs font-medium text-green-700 transition hover:border-green-300 hover:bg-green-100";
 }
 
-export default function UsersPage() {
-  const [draftFilters, setDraftFilters] = useState<UserFilters>(emptyFilters);
-  const [filters, setFilters] = useState<UserFilters>(emptyFilters);
+function getCommentLabel(comment: AdminComment) {
+  if (!comment.content) {
+    return `#${comment.id}`;
+  }
+
+  return `#${comment.id} ${comment.content.slice(0, 16)}`;
+}
+
+export default function CommentsPage() {
+  const [draftFilters, setDraftFilters] =
+    useState<CommentFilters>(emptyFilters);
+  const [filters, setFilters] = useState<CommentFilters>(emptyFilters);
   const [page, setPage] = useState(1);
   const [queryVersion, setQueryVersion] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState("");
-  const [actionUserUuid, setActionUserUuid] = useState("");
-  const [data, setData] = useState<PageResult<AdminUserPageItem>>({
+  const [actionCommentId, setActionCommentId] = useState<number | null>(null);
+  const [data, setData] = useState<PageResult<AdminComment>>({
     current: 1,
     size: PAGE_SIZE,
     total: 0,
@@ -82,12 +97,13 @@ export default function UsersPage() {
       setLoading(true);
       setError("");
 
-      getAdminUserPage({
+      getCommentPage({
         current: page,
         size: PAGE_SIZE,
-        uuid: filters.uuid,
-        nickname: filters.nickname,
-        email: filters.email,
+        id: filters.id,
+        postId: filters.postId,
+        userUuid: filters.userUuid,
+        content: filters.content,
         status: filters.status,
       })
         .then((result) => {
@@ -97,7 +113,7 @@ export default function UsersPage() {
         })
         .catch((requestError) => {
           if (!ignore) {
-            setError(getErrorMessage(requestError, "用户列表加载失败"));
+            setError(getErrorMessage(requestError, "评论列表加载失败"));
             setData({
               current: page,
               size: PAGE_SIZE,
@@ -125,9 +141,10 @@ export default function UsersPage() {
     setActionError("");
     setPage(1);
     setFilters({
-      uuid: draftFilters.uuid.trim(),
-      nickname: draftFilters.nickname.trim(),
-      email: draftFilters.email.trim(),
+      id: draftFilters.id.trim(),
+      postId: draftFilters.postId.trim(),
+      userUuid: draftFilters.userUuid.trim(),
+      content: draftFilters.content.trim(),
       status: draftFilters.status,
     });
     setQueryVersion((current) => current + 1);
@@ -142,21 +159,21 @@ export default function UsersPage() {
     setQueryVersion((current) => current + 1);
   }
 
-  async function handleUserStatusAction(
-    user: AdminUserPageItem,
+  async function handleCommentStatusAction(
+    comment: AdminComment,
     action: "ban" | "unban",
   ) {
     setActionMessage("");
     setActionError("");
-    setActionUserUuid(user.uuid);
+    setActionCommentId(comment.id);
 
     try {
       if (action === "ban") {
-        await banAdminUser(user.uuid);
-        setActionMessage(`已封禁用户：${user.nickname || user.uuid}`);
+        await banAdminComment(comment.id);
+        setActionMessage(`已封禁评论：${getCommentLabel(comment)}`);
       } else {
-        await unbanAdminUser(user.uuid);
-        setActionMessage(`已解封用户：${user.nickname || user.uuid}`);
+        await unbanAdminComment(comment.id);
+        setActionMessage(`已解封评论：${getCommentLabel(comment)}`);
       }
 
       setQueryVersion((current) => current + 1);
@@ -164,76 +181,90 @@ export default function UsersPage() {
       setActionError(
         getErrorMessage(
           requestError,
-          action === "ban" ? "封禁用户失败" : "解封用户失败",
+          action === "ban" ? "封禁评论失败" : "解封评论失败",
         ),
       );
     } finally {
-      setActionUserUuid("");
+      setActionCommentId(null);
     }
   }
 
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-2xl font-semibold text-slate-950">用户管理</h2>
+        <h2 className="text-2xl font-semibold text-slate-950">评论管理</h2>
       </div>
 
       <form
         className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
         onSubmit={handleSearch}
       >
-        <div className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1.2fr_0.85fr_auto]">
+        <div className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[0.75fr_0.75fr_1.25fr_1.2fr_0.85fr_auto]">
           <label className="flex flex-col gap-2">
             <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
-              用户 UUID
+              评论 ID
+            </span>
+            <input
+              className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
+              value={draftFilters.id}
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  id: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
+              帖子 ID
+            </span>
+            <input
+              className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
+              value={draftFilters.postId}
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  postId: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
+              评论者 UUID
             </span>
             <input
               className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
               placeholder="5ee308..."
-              value={draftFilters.uuid}
+              value={draftFilters.userUuid}
               onChange={(event) =>
                 setDraftFilters((current) => ({
                   ...current,
-                  uuid: event.target.value,
+                  userUuid: event.target.value,
                 }))
               }
             />
           </label>
           <label className="flex flex-col gap-2">
             <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
-              昵称
+              评论内容
             </span>
             <input
               className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
-              placeholder="marmot"
-              value={draftFilters.nickname}
+              placeholder="歧路"
+              value={draftFilters.content}
               onChange={(event) =>
                 setDraftFilters((current) => ({
                   ...current,
-                  nickname: event.target.value,
+                  content: event.target.value,
                 }))
               }
             />
           </label>
           <label className="flex flex-col gap-2">
             <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
-              邮箱
-            </span>
-            <input
-              className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
-              placeholder="marmot@example.com"
-              value={draftFilters.email}
-              onChange={(event) =>
-                setDraftFilters((current) => ({
-                  ...current,
-                  email: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label className="flex flex-col gap-2">
-            <span className="block h-5 text-sm font-medium leading-5 text-slate-700">
-              账号状态
+              状态
             </span>
             <select
               className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
@@ -247,7 +278,8 @@ export default function UsersPage() {
             >
               <option value="">全部</option>
               <option value="1">正常</option>
-              <option value="0">封禁</option>
+              <option value="2">封禁</option>
+              <option value="0">删除</option>
             </select>
           </label>
           <div className="flex gap-2">
@@ -286,60 +318,82 @@ export default function UsersPage() {
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-50 text-xs font-semibold text-slate-500">
               <tr>
-                <th className="px-6 py-3">用户</th>
-                <th className="px-6 py-3">邮箱</th>
-                <th className="px-6 py-3">状态</th>
-                <th className="px-6 py-3">注册时间</th>
+                <th className="whitespace-nowrap px-6 py-3">ID</th>
+                <th className="min-w-72 px-6 py-3">评论内容</th>
+                <th className="w-40 px-6 py-3">评论者</th>
+                <th className="whitespace-nowrap px-6 py-3">帖子 ID</th>
+                <th className="w-40 px-6 py-3">帖子作者</th>
+                <th className="whitespace-nowrap px-6 py-3">状态</th>
+                <th className="min-w-24 px-6 py-3">互动</th>
+                <th className="px-6 py-3">创建时间</th>
                 <th className="px-6 py-3">更新时间</th>
-                <th className="px-6 py-3 text-right">操作</th>
+                <th className="whitespace-nowrap px-6 py-3 text-right">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {loading ? <TableLoading colSpan={6} /> : null}
+              {loading ? <TableLoading colSpan={10} /> : null}
               {!loading && error ? (
-                <TableError colSpan={6} message={error} />
+                <TableError colSpan={10} message={error} />
               ) : null}
               {!loading && !error && data.records.length === 0 ? (
-                <TableEmpty colSpan={6} />
+                <TableEmpty colSpan={10} />
               ) : null}
               {!loading && !error
-                ? data.records.map((user) => {
-                    const statusInfo = getUserStatus(user.status);
-                    const canBan = user.status === 1;
-                    const canUnban = user.status === 0;
-                    const actionLoading = actionUserUuid === user.uuid;
+                ? data.records.map((comment) => {
+                    const statusInfo = getCommentStatus(comment.status);
+                    const canBan = comment.status === 1;
+                    const canUnban = comment.status === 2;
+                    const actionLoading = actionCommentId === comment.id;
 
                     return (
-                      <tr className="hover:bg-slate-50" key={user.uuid}>
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-slate-950">
-                            {user.nickname || "-"}
-                          </div>
-                          <div className="mt-1 max-w-72 truncate text-xs text-slate-500">
-                            {user.uuid}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-slate-600">
-                          {user.email || "-"}
+                      <tr className="hover:bg-slate-50" key={comment.id}>
+                        <td className="whitespace-nowrap px-6 py-4 text-xs font-medium text-slate-500">
+                          ID {comment.id}
                         </td>
                         <td className="px-6 py-4">
+                          <div className="max-w-xl truncate font-medium text-slate-950">
+                            {comment.content || "-"}
+                          </div>
+                        </td>
+                        <td className="w-40 px-6 py-4 text-slate-600">
+                          <div className="max-w-36 truncate">
+                            {comment.userUuid || "-"}
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-slate-600">
+                          {comment.postId ?? "-"}
+                        </td>
+                        <td className="w-40 px-6 py-4 text-slate-600">
+                          <div className="max-w-36 truncate">
+                            {comment.postAuthorUuid || "-"}
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4">
                           <StatusBadge tone={statusInfo.tone}>
                             {statusInfo.label}
                           </StatusBadge>
                         </td>
-                        <td className="px-6 py-4 text-slate-600">
-                          {formatDateTime(user.createdAt)}
+                        <td className="min-w-24 px-6 py-4 text-slate-600">
+                          <div className="space-y-1 text-sm text-slate-600">
+                            <div>点赞 {formatNumber(comment.likeCount)}</div>
+                            <div>回复 {formatNumber(comment.replyCount)}</div>
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-slate-600">
-                          {formatDateTime(user.updatedAt)}
+                          {formatDateTime(comment.createdAt)}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex justify-end gap-2">
+                        <td className="px-6 py-4 text-slate-600">
+                          {formatDateTime(comment.updatedAt)}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <div className="flex flex-nowrap justify-end gap-2">
                             <button
                               className={getActionButtonClasses(canBan, "red")}
                               disabled={!canBan || actionLoading}
                               type="button"
-                              onClick={() => handleUserStatusAction(user, "ban")}
+                              onClick={() =>
+                                handleCommentStatusAction(comment, "ban")
+                              }
                             >
                               封禁
                             </button>
@@ -351,7 +405,7 @@ export default function UsersPage() {
                               disabled={!canUnban || actionLoading}
                               type="button"
                               onClick={() =>
-                                handleUserStatusAction(user, "unban")
+                                handleCommentStatusAction(comment, "unban")
                               }
                             >
                               解封

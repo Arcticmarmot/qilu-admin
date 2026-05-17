@@ -46,7 +46,6 @@ export default function PreheatVoucherSeckillPage() {
             className="h-11 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-100"
             disabled={loading}
             min={1}
-            placeholder="1"
             type="number"
             value={seckillId}
             onChange={(event) => setSeckillId(event.target.value)}

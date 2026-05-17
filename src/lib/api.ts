@@ -29,20 +29,68 @@ export type CurrentUser = {
 
 export type AdminUser = CurrentUser;
 
+export type AdminUserPageItem = {
+  id?: number;
+  uuid: string;
+  nickname?: string;
+  email?: string;
+  status?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type AdminPost = {
   id: number;
+  parentId?: number;
+  rootId?: number;
+  branchPrompt?: string;
   userUuid?: string;
-  nickname?: string;
   title?: string;
-  content?: string;
   contentSnippet?: string;
-  contentPreview?: string;
   visibility?: 1 | 2 | number;
   status?: number;
   likeCount?: number;
   commentCount?: number;
   createdAt?: string;
-  createAt?: string;
+  updatedAt?: string;
+  deletedAt?: string;
+};
+
+export type AdminComment = {
+  id: number;
+  postId?: number;
+  postAuthorUuid?: string;
+  userUuid?: string;
+  content?: string;
+  likeCount?: number;
+  replyCount?: number;
+  status?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type AdminReply = {
+  id: number;
+  postId?: number;
+  rootCommentId?: number;
+  parentReplyId?: number;
+  userUuid?: string;
+  targetUserUuid?: string;
+  content?: string;
+  likeCount?: number;
+  status?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type AdminLike = {
+  id: number;
+  creationType?: "POST" | "COMMENT" | "REPLY" | string;
+  creationId?: number;
+  userUuid?: string;
+  status?: number;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type VoucherCreateInput = {
@@ -101,31 +149,52 @@ export function login(input: { username: string; password: string }) {
 }
 
 export function getCurrentUser() {
-  return request<CurrentUser>("/admin/auth/me");
+  return request<CurrentUser>("/admin/operators/me");
 }
 
 export function getAdminUserPage(input: {
   current?: number;
   size?: number;
-  keyword?: string;
+  uuid?: string;
+  nickname?: string;
+  email?: string;
   status?: string;
 }) {
   const size = input.size ?? 20;
 
-  return request<MaybePageResult<AdminUser>>(
+  return request<MaybePageResult<AdminUserPageItem>>(
     `/admin/users${buildQuery({
       current: input.current ?? 1,
       size,
-      keyword: input.keyword?.trim(),
+      uuid: input.uuid?.trim(),
+      nickname: input.nickname?.trim(),
+      email: input.email?.trim(),
       status: input.status,
     })}`,
   ).then((page) => normalizePageResult(page, size));
 }
 
+export function banAdminUser(userUuid: string) {
+  return request<void>(`/admin/users/${userUuid}/ban`, {
+    method: "PATCH",
+  });
+}
+
+export function unbanAdminUser(userUuid: string) {
+  return request<void>(`/admin/users/${userUuid}/unban`, {
+    method: "PATCH",
+  });
+}
+
 export function getPostPage(input: {
   current?: number;
   size?: number;
-  keyword?: string;
+  postId?: string;
+  rootId?: string;
+  userUuid?: string;
+  title?: string;
+  status?: string;
+  visibility?: string;
 }) {
   const size = input.size ?? 20;
 
@@ -133,7 +202,126 @@ export function getPostPage(input: {
     `/admin/posts${buildQuery({
       current: input.current ?? 1,
       size,
-      keyword: input.keyword?.trim(),
+      postId: input.postId?.trim(),
+      rootId: input.rootId?.trim(),
+      userUuid: input.userUuid?.trim(),
+      title: input.title?.trim(),
+      status: input.status,
+      visibility: input.visibility,
+    })}`,
+  ).then((page) => normalizePageResult(page, size));
+}
+
+export function banAdminPost(postId: number) {
+  return request<void>(`/admin/posts/${postId}/ban`, {
+    method: "PATCH",
+  });
+}
+
+export function unbanAdminPost(postId: number) {
+  return request<void>(`/admin/posts/${postId}/unban`, {
+    method: "PATCH",
+  });
+}
+
+export function getCommentPage(input: {
+  current?: number;
+  size?: number;
+  id?: string;
+  postId?: string;
+  userUuid?: string;
+  content?: string;
+  status?: string;
+}) {
+  const size = input.size ?? 20;
+
+  return request<MaybePageResult<AdminComment>>(
+    `/admin/comments${buildQuery({
+      current: input.current ?? 1,
+      size,
+      id: input.id?.trim(),
+      postId: input.postId?.trim(),
+      userUuid: input.userUuid?.trim(),
+      content: input.content?.trim(),
+      status: input.status,
+    })}`,
+  ).then((page) => normalizePageResult(page, size));
+}
+
+export function banAdminComment(commentId: number) {
+  return request<void>(`/admin/comments/${commentId}/ban`, {
+    method: "PATCH",
+  });
+}
+
+export function unbanAdminComment(commentId: number) {
+  return request<void>(`/admin/comments/${commentId}/unban`, {
+    method: "PATCH",
+  });
+}
+
+export function getReplyPage(input: {
+  current?: number;
+  size?: number;
+  id?: string;
+  postId?: string;
+  rootCommentId?: string;
+  parentReplyId?: string;
+  userUuid?: string;
+  targetUserUuid?: string;
+  content?: string;
+  status?: string;
+}) {
+  const size = input.size ?? 20;
+
+  return request<MaybePageResult<AdminReply>>(
+    `/admin/replies${buildQuery({
+      current: input.current ?? 1,
+      size,
+      id: input.id?.trim(),
+      postId: input.postId?.trim(),
+      rootCommentId: input.rootCommentId?.trim(),
+      parentReplyId: input.parentReplyId?.trim(),
+      userUuid: input.userUuid?.trim(),
+      targetUserUuid: input.targetUserUuid?.trim(),
+      content: input.content?.trim(),
+      status: input.status,
+    })}`,
+  ).then((page) => normalizePageResult(page, size));
+}
+
+export function banAdminReply(replyId: number) {
+  return request<void>(`/admin/replies/${replyId}/ban`, {
+    method: "PATCH",
+  });
+}
+
+export function unbanAdminReply(replyId: number) {
+  return request<void>(`/admin/replies/${replyId}/unban`, {
+    method: "PATCH",
+  });
+}
+
+export function getLikePage(input: {
+  current?: number;
+  size?: number;
+  likeId?: string;
+  creationType?: string;
+  creationId?: string;
+  userUuid?: string;
+  status?: string;
+}) {
+  const size = input.size ?? 20;
+
+  return request<MaybePageResult<AdminLike>>(
+    `/admin/likes${buildQuery({
+      current: input.current ?? 1,
+      size,
+      likeId: input.likeId?.trim(),
+      creationType: input.creationType,
+      creationId: input.creationId?.trim(),
+      userUuid: input.userUuid?.trim(),
+      status: input.status,
     })}`,
   ).then((page) => normalizePageResult(page, size));
 }

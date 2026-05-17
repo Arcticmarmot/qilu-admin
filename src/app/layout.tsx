@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "歧路后台",
-  description: "歧路 Qilu 极简后台管理系统",
+  title: "歧路后台管理系统",
+  description: "歧路后台管理系统",
   icons: {
     icon: "/qilu-mark-white.svg",
     shortcut: "/qilu-mark-white.svg",
