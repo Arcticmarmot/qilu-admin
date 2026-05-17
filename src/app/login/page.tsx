@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { login } from "@/lib/api";
 import { getToken, setToken } from "@/lib/auth";
@@ -55,9 +56,13 @@ export default function LoginPage() {
       <section className="grid w-full max-w-5xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl shadow-slate-200/70 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="hidden min-h-[560px] flex-col justify-between bg-slate-950 p-10 text-white lg:flex">
           <div>
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-white text-base font-bold text-slate-950">
-              Q
-            </div>
+            <Image
+              alt="Qilu"
+              className="h-11 w-11"
+              height={44}
+              src="/qilu-mark-white.svg"
+              width={44}
+            />
             <div className="mt-12">
               <p className="text-sm font-medium text-teal-200">
                 Qilu Admin Console
@@ -81,8 +86,14 @@ export default function LoginPage() {
         <div className="flex min-h-[560px] items-center px-6 py-10 sm:px-10">
           <div className="mx-auto w-full max-w-sm">
             <div className="mb-9 lg:hidden">
-              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-slate-950 text-base font-bold text-white">
-                Q
+              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-slate-950">
+                <Image
+                  alt="Qilu"
+                  className="h-9 w-9"
+                  height={36}
+                  src="/qilu-mark-white.svg"
+                  width={36}
+                />
               </div>
               <p className="text-sm font-medium text-teal-700">
                 Qilu Admin Console

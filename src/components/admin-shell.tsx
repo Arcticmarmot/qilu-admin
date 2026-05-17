@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AUTH_INVALID_EVENT, clearToken, getToken } from "@/lib/auth";
@@ -99,9 +100,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-slate-100 text-slate-950">
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-sidebar text-white lg:flex">
         <div className="flex h-16 items-center border-b border-white/10 px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-500 text-sm font-bold text-white">
-            Q
-          </div>
+          <Image
+            alt="Qilu"
+            className="h-9 w-9"
+            height={36}
+            src="/qilu-mark-white.svg"
+            width={36}
+          />
           <div className="ml-3">
             <div className="text-sm font-semibold">Qilu Admin</div>
             <div className="text-xs text-slate-400">歧路后台</div>

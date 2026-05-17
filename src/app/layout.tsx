@@ -4,6 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "歧路后台",
   description: "歧路 Qilu 极简后台管理系统",
+  icons: {
+    icon: "/qilu-mark-white.svg",
+    shortcut: "/qilu-mark-white.svg",
+    apple: "/qilu-mark-white.svg",
+  },
 };
 
 export default function RootLayout({

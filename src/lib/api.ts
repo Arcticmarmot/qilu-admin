@@ -99,7 +99,7 @@ export function login(input: { username: string; password: string }) {
 }
 
 export function getCurrentUser() {
-  return request<CurrentUser>("/users/me");
+  return request<CurrentUser>("/admin/auth/me");
 }
 
 export function getAdminUserPage(input: {
@@ -128,7 +128,7 @@ export function getPostPage(input: {
   const size = input.size ?? 20;
 
   return request<MaybePageResult<AdminPost>>(
-    `/posts${buildQuery({
+    `/admin/posts${buildQuery({
       current: input.current ?? 1,
       size,
       keyword: input.keyword?.trim(),
@@ -144,7 +144,7 @@ export function getVoucherSeckillPage(input: {
   const size = input.size ?? 20;
 
   return request<MaybePageResult<VoucherSeckill>>(
-    `/voucher-seckills${buildQuery({
+    `/admin/voucher-seckills${buildQuery({
       current: input.current ?? 1,
       size,
       status: input.status,
