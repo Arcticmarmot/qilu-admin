@@ -18,8 +18,10 @@ export type LoginResponse = {
 
 export type CurrentUser = {
   uuid: string;
-  nickname: string;
-  email: string;
+  nickname?: string;
+  username?: string;
+  email?: string;
+  role?: string;
   status?: number;
   createdAt?: string;
   createAt?: string;
@@ -43,17 +45,17 @@ export type AdminPost = {
   createAt?: string;
 };
 
-export type VoucherSeckill = {
-  seckillId: number;
-  voucherId: number;
+export type VoucherCreateInput = {
   title: string;
   description?: string;
+};
+
+export type VoucherSeckillCreateInput = {
+  voucherId: number;
   totalStock: number;
-  remainingStock: number;
-  startTime?: string;
-  endTime?: string;
-  redeemDeadline?: string;
-  status?: number;
+  startTime: string;
+  endTime: string;
+  redeemDeadline: string;
 };
 
 type QueryValue = string | number | undefined | null;
@@ -136,18 +138,34 @@ export function getPostPage(input: {
   ).then((page) => normalizePageResult(page, size));
 }
 
-export function getVoucherSeckillPage(input: {
-  current?: number;
-  size?: number;
-  status?: string;
-}) {
-  const size = input.size ?? 20;
+export function createVoucher(input: VoucherCreateInput) {
+  return request<number>("/admin/vouchers", {
+    method: "POST",
+    body: {
+      title: input.title.trim(),
+      description: input.description?.trim() || undefined,
+    },
+  });
+}
 
-  return request<MaybePageResult<VoucherSeckill>>(
-    `/admin/voucher-seckills${buildQuery({
-      current: input.current ?? 1,
-      size,
-      status: input.status,
-    })}`,
-  ).then((page) => normalizePageResult(page, size));
+export function createVoucherSeckill(input: VoucherSeckillCreateInput) {
+  return request<number>("/admin/voucher-seckills", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export function preheatVoucherSeckill(seckillId: number) {
+  return request<void>(`/admin/voucher-seckills/${seckillId}/preheat`, {
+    method: "POST",
+  });
+}
+
+export function redeemVoucherOrder(redeemCode: string) {
+  return request<void>("/admin/voucher-orders/redeem", {
+    method: "PATCH",
+    body: {
+      redeemCode: redeemCode.trim(),
+    },
+  });
 }

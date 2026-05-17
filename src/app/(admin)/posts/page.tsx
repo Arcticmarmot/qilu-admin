@@ -93,7 +93,7 @@ export default function PostsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-2xl font-semibold text-slate-950">内容管理</h2>
+        <h2 className="text-2xl font-semibold text-slate-950">帖子管理</h2>
         <p className="mt-1 text-sm text-slate-500">帖子内容、作者与互动数据</p>
       </div>
 
