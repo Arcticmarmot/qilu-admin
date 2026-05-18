@@ -110,12 +110,6 @@ export default function ProfilePage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs font-medium text-slate-500">邮箱</dt>
-                <dd className="mt-1 text-sm text-slate-900">
-                  {user.email ?? "-"}
-                </dd>
-              </div>
-              <div>
                 <dt className="text-xs font-medium text-slate-500">创建时间</dt>
                 <dd className="mt-1 text-sm text-slate-900">
                   {formatDateTime(user.createdAt ?? user.createAt)}
